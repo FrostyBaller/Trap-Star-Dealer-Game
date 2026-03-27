@@ -756,6 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'GROWING',
                 items: [
                     { id: 'unlock_pot', name: 'New Pot Slot', cost: (state.upgrades.unlockedPots) * 250, available: state.upgrades.unlockedPots < 6 },
+                    { id: 'unlock_dry', name: 'New Drying Rack', cost: (state.upgrades.unlockedDryers) * 500, available: state.upgrades.unlockedDryers < 3 },
                     { id: 'pot', name: 'Pot Quality', cost: (state.upgrades.potLevel + 1) * 300, level: state.upgrades.potLevel, max: 2 },
                     { id: 'lights', name: 'Pro Lights', cost: 1000, owned: state.upgrades.hasProLights },
                     { id: 'strain', name: 'Next Strain', cost: (state.upgrades.unlockedStrains) * 1500, available: state.upgrades.unlockedStrains < state.strains.length }
@@ -1796,6 +1797,61 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
     }
+
+    function renderDrySlots() {
+        const rack = document.getElementById('drying-rack');
+        if (!rack) return;
+        rack.innerHTML = '';
+        state.dryingBuds.forEach((bud, index) => {
+            const slot = document.createElement('div');
+            slot.className = `dry-slot ${bud === 'locked' ? 'locked' : ''}`;
+            slot.dataset.index = index;
+            if (bud === 'locked') {
+                slot.innerHTML = '<span class="lock-icon">🔒</span>';
+            } else if (bud === null) {
+                slot.innerHTML = `<button class="btn small" onclick="startDrying(${index})">START DRY</button>`;
+            } else {
+                if (bud.progress >= 100) {
+                    slot.innerHTML = `<button class="btn small" onclick="collectDry(${index})">COLLECT</button>`;
+                } else {
+                    slot.innerHTML = `<div class="hanging-bud"></div><div class="progress-bar-container"><div class="progress-bar" style="width:${bud.progress}%"></div></div>`;
+                }
+            }
+            rack.appendChild(slot);
+        });
+    }
+
+    window.startDrying = (slotIndex) => {
+        if (state.wetGrams >= 50 && state.dryingBuds[slotIndex] === null) {
+            state.wetGrams -= 50;
+            state.dryingBuds[slotIndex] = { progress: 0 };
+            updateUI();
+            
+            const interval = setInterval(() => {
+                if (!state.dryingBuds[slotIndex] || state.dryingBuds[slotIndex] === 'locked') {
+                    clearInterval(interval);
+                    return;
+                }
+                
+                state.dryingBuds[slotIndex].progress += 5;
+                if (state.dryingBuds[slotIndex].progress >= 100) {
+                    state.dryingBuds[slotIndex].progress = 100;
+                    state.dryGrams += 20;
+                    updateUI();
+                    clearInterval(interval);
+                } else {
+                    renderDrySlots();
+                }
+            }, 1000);
+        } else if (state.wetGrams < 50) {
+            alert("Need at least 50g Wet Bud to start drying!");
+        }
+    };
+
+    window.collectDry = (index) => {
+        state.dryingBuds[index] = null;
+        updateUI();
+    };
 
     // Initial Loops
     setInterval(generateOrder, 15000);
